@@ -1,0 +1,71 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Visio AI VMS</title>
+<style>
+:root{--bg:#0b1b33;--card:#13294b;--ac:#7ed321;--tx:#e8eefc;--mu:#8fa3c7}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;gap:12px;align-items:center;padding:10px 16px;background:#08142a}
+header b{font-size:18px}header b i{color:var(--ac);font-style:normal}
+nav button,.btn{background:var(--card);color:var(--tx);border:1px solid #27406b;padding:7px 14px;border-radius:6px;cursor:pointer}
+nav button.on,.btn.p{background:var(--ac);color:#0b1b33;border-color:var(--ac);font-weight:600}
+main{padding:16px}.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.tile{background:var(--card);border-radius:8px;overflow:hidden;position:relative}.tile img{width:100%;display:block;min-height:180px;background:#000}
+.tile .cap{padding:6px 10px;display:flex;justify-content:space-between;font-size:13px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}.online{background:#3ddc84}.offline{background:#e5484d}.connecting{background:#f5a623}
+.card{background:var(--card);padding:16px;border-radius:8px;max-width:640px}
+label{display:block;margin:8px 0 3px;color:var(--mu);font-size:13px}input,select{width:100%;padding:8px;border-radius:6px;border:1px solid #27406b;background:#0b1b33;color:var(--tx)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px;border-bottom:1px solid #27406b;text-align:left}
+.low{color:#8fa3c7}.medium{color:#f5a623}.high{color:#e5484d;font-weight:700}
+.row{display:flex;gap:10px}.row>*{flex:1}#login{max-width:320px;margin:15vh auto}
+#modal{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center}#modal img{max-width:90vw;max-height:90vh}
+</style></head><body>
+<div id="login" class="card"><h2>Visio <span style="color:var(--ac)">AI</span> VMS</h2>
+<label>Username</label><input id="u" value="admin"><label>Password</label><input id="p" type="password">
+<p id="lerr" class="high"></p><button class="btn p" onclick="login()">Sign in</button></div>
+<div id="app" style="display:none"><header><b>Visio <i>AI</i> VMS</b>
+<nav><button data-t="live" class="on">Live View</button> <button data-t="cams">Cameras</button> <button data-t="ev">Events</button></nav>
+<span style="flex:1"></span><span id="stat" style="color:var(--mu);font-size:13px"></span></header>
+<main><section id="live"><div class="grid" id="grid"></div></section>
+<section id="cams" hidden><div class="card"><h3>Add camera</h3>
+<div class="row"><div><label>Name</label><input id="n" placeholder="Main Gate"></div>
+<div><label>Source</label><select id="st" onchange="srcUI()"><option value="rtsp">RTSP IP camera / NVR / DVR</option><option value="webcam">USB / laptop webcam</option><option value="custom">Custom URL / video file</option></select></div></div>
+<div id="rt"><label>Brand / template</label><select id="br"></select>
+<div class="row"><div><label>IP</label><input id="ip" placeholder="192.168.1.64"></div><div><label>Port</label><input id="po" value="554"></div></div>
+<div class="row"><div><label>User</label><input id="us" value="admin"></div><div><label>Password</label><input id="pw" type="password"></div></div>
+<div class="row"><div><label>Channel</label><input id="ch" value="1"></div><div><label>Stream</label><select id="sm"><option>sub</option><option>main</option></select></div></div></div>
+<div id="wc" hidden><label>Webcam index</label><input id="wi" value="0"></div>
+<div id="cu" hidden><label>URL or file path</label><input id="url"></div>
+<label>AI analytics</label><div><label style="display:inline"><input type="checkbox" class="m" value="motion" checked style="width:auto"> Motion</label>
+<label style="display:inline;margin-left:14px"><input type="checkbox" class="m" value="person" checked style="width:auto"> Person</label>
+<label style="display:inline;margin-left:14px"><input type="checkbox" class="m" value="tamper" checked style="width:auto"> Tamper</label></div>
+<p id="tr" style="color:var(--mu)"></p><button class="btn" onclick="test()">⚡ Test connection</button> <button class="btn p" onclick="add()">Add camera</button>
+<button class="btn" onclick="demo()">🎥 Webcam demo</button></div>
+<h3>Cameras</h3><table id="ct"></table></section>
+<section id="ev" hidden><table id="et"></table></section></main></div>
+<div id="modal" onclick="this.style.display='none'"><img id="mi"></div>
+<script>
+const $=s=>document.querySelector(s);let cams=[],timer;
+async function api(p,b,m){const r=await fetch('/api/'+p,b!==undefined||m?{method:m||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})}:{});
+ if(r.status==401){$('#app').style.display='none';$('#login').style.display='';throw 0}return r.json()}
+async function login(){try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:$('#u').value,pass:$('#p').value})});
+ if(!r.ok){$('#lerr').textContent='Invalid credentials';return}$('#login').style.display='none';$('#app').style.display='';init()}catch(e){}}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+ ['live','cams','ev'].forEach(t=>$('#'+t).hidden=t!=b.dataset.t);refresh()});
+function srcUI(){const v=$('#st').value;$('#rt').hidden=v!='rtsp';$('#wc').hidden=v!='webcam';$('#cu').hidden=v!='custom'}
+function payload(){const v=$('#st').value;return{name:$('#n').value||'Camera',source_type:v,brand:$('#br').value,ip:v=='webcam'?$('#wi').value:$('#ip').value,port:+$('#po').value,
+ user:$('#us').value,pw:$('#pw').value,ch:+$('#ch').value,stream:$('#sm').value,url:$('#url').value,modes:[...document.querySelectorAll('.m:checked')].map(x=>x.value)}}
+async function test(){$('#tr').textContent='Testing…';const r=await api('test',payload());$('#tr').textContent=(r.ok?'✅ ':'❌ ')+r.msg}
+async function add(){await api('cameras',payload());refresh()}
+async function demo(){await api('webcam-demo');refresh()}
+async function del(i){if(confirm('Delete camera?')){await api('cameras/'+i,{},'DELETE');refresh()}}
+async function ack(i){await api('events/'+i+'/ack');refresh()}
+function view(f){$('#mi').src='/api/snap/'+f;$('#modal').style.display='flex'}
+async function refresh(){cams=await api('cameras');
+ const ids=cams.map(c=>c.id).join();if($('#grid').dataset.ids!=ids){$('#grid').dataset.ids=ids;
+  $('#grid').innerHTML=cams.map(c=>`<div class="tile"><img src="/api/stream/${c.id}"><div class="cap"><span><i class="dot online" id="d${c.id}"></i>${c.name}</span><span id="pc${c.id}"></span></div></div>`).join('')||'<p>No cameras yet — add one in the Cameras tab.</p>'}
+ cams.forEach(c=>{const d=$('#d'+c.id);if(d)d.className='dot '+c.status;const p=$('#pc'+c.id);if(p)p.textContent=c.persons?'👤 '+c.persons:''});
+ $('#ct').innerHTML='<tr><th>Name</th><th>Source</th><th>Status</th><th></th></tr>'+cams.map(c=>`<tr><td>${c.name}</td><td>${c.source_type} ${c.brand||''} ${c.ip||''}</td><td><i class="dot ${c.status}"></i>${c.status}</td><td><button class="btn" onclick="del(${c.id})">Delete</button></td></tr>`).join('');
+ const ev=await api('events');$('#stat').textContent=cams.filter(c=>c.status=='online').length+'/'+cams.length+' cameras online · '+ev.filter(e=>!e.ack).length+' unacknowledged';
+ $('#et').innerHTML='<tr><th>Time</th><th>Camera</th><th>Type</th><th>Severity</th><th>Details</th><th></th></tr>'+ev.map(e=>`<tr><td>${new Date(e.ts*1000).toLocaleString()}</td><td>${e.cam_name}</td><td>${e.type}</td><td class="${e.sev}">${e.sev}</td><td><a href="#" onclick="view('${e.snap}');return false" style="color:var(--ac)">${e.label}</a></td><td>${e.ack?'✔':`<button class="btn" onclick="ack(${e.id})">Ack</button>`}</td></tr>`).join('')}
+async function init(){const b=await api('brands');$('#br').innerHTML=b.map(x=>`<option>${x}</option>`).join('');refresh();clearInterval(timer);timer=setInterval(refresh,3000)}
+$('#p').addEventListener('keydown',e=>e.key=='Enter'&&login());fetch('/api/brands').then(r=>{if(r.ok){$('#login').style.display='none';$('#app').style.display='';init()}});
+</script></body></html>
