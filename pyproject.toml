@@ -1,13 +1,20 @@
 [project]
 name = "visioit-solutions-vms"
 version = "0.1.0"
-description = "Add your description here"
+description = "Industry ready futuristic VMS"
 readme = "README.md"
 authors = [
-    { name = "[Anshuman Pathak]", email = "[pathakanshuman0001@gmail.com]" }
+    { name = "[Anshuman Pathak]", email = "[pathakanshuman0001@gmail.com]" },
+    { name = "[Gaurav Shahi]", email = "[shahigaurav836@gmail.com]" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.162.5",
+    "numpy>=2.4.6",
+    "opencv-python-headless==4.10.0.84",
+    "onnxruntime",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [project.scripts]
 visioit-solutions-vms = "visioit_solutions_vms:main"
